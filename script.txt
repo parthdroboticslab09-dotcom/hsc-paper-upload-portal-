@@ -1,0 +1,47 @@
+var FOLDER_IDS = {
+  "11_A_COMMERCE": "1dKI4EQcvz8bdaxkcFjPUQ8PnK_bwLtY2",
+  "11_B_SCIENCE":  "1bfBjKu_4tLWIHT1HmgI0Zw5zi51NHeec",
+  "12_A_COMMERCE": "1j-a4HaQZXcGvcJAxqk7hxA3fAnUar_kE"
+};
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    
+    // Clean inputs and replace spaces with underscores to match your drive folder key format
+    var division = (data.division || "").toString().trim();
+    var stream = (data.stream || "").toString().trim();
+    
+    // Transforms "11 A" + "Commerce" -> "11_A_COMMERCE"
+    var folderKey = (division + " " + stream)
+      .replace(/\s+/g, '_')
+      .toUpperCase();
+    
+    var targetFolderId = FOLDER_IDS[folderKey];
+    
+    if (!targetFolderId) {
+      throw new Error("Target folder not found for key: '" + folderKey + "'");
+    }
+    
+    var targetFolder = DriveApp.getFolderById(targetFolderId);
+    
+    var blob = Utilities.newBlob(
+      Utilities.base64Decode(data.fileData), 
+      data.mimeType, 
+      data.fileName
+    );
+    
+    var uploadedFile = targetFolder.createFile(blob);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'success',
+      fileUrl: uploadedFile.getUrl()
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      status: 'error',
+      message: error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
